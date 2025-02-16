@@ -41,25 +41,45 @@ async function login(url) {
     await page.type(emailInputSelector, emailAddress, { delay: 10 });
     console.debug("Waiting for the Next button to appear and clicking on it");
     const nextButtonSelector = 'input[value="Next"]';
-    await page.waitForSelector(nextButtonSelector, { timeout: 1000 });
+    await page.waitForSelector(nextButtonSelector, { timeout: waitForSelectorTimeout });
     await page.click(nextButtonSelector);
     console.debug("Waiting for the password input field to appear and typing in the password");
     const passwordInputSelector = 'input[name="passwd"]';
-    await page.waitForSelector(passwordInputSelector, { timeout: 1000 });
+    await page.waitForSelector(passwordInputSelector, { timeout: waitForSelectorTimeout });
     await page.type(passwordInputSelector, password, { delay: 10 });
     console.debug("Waiting for the Sign in button to appear and clicking on it");
     const signInButtonSelector = 'input[value="Sign in"]';
-    await page.waitForSelector(signInButtonSelector, { timeout: 1000 });
+    await page.waitForSelector(signInButtonSelector, { timeout: waitForSelectorTimeout });
     await page.click(signInButtonSelector);
+
+    // If the user has Microsoft Push based MFA enabled, the following code will handle it by switching to OTP
+    try {
+      console.debug("Detecting OTP vs Push MFA...");
+      const mfaTypeDetector = '.display-sign-container';
+      const detectMfaType = await page.waitForSelector(mfaTypeDetector, { timeout: 1500 });
+      if (detectMfaType) {
+        console.debug("MFA type detected: Microsoft Push based MFA");
+        const mfaSwitchSelector = '[id="signInAnotherWay"]';
+        await page.waitForSelector(mfaSwitchSelector, { timeout: waitForSelectorTimeout });
+        await page.click(mfaSwitchSelector);
+        console.debug("Waiting for the 'Use a verification code' link to appear and clicking on it");
+        const useVerificationCodeSelector = '::-p-text(Use a verification code)';
+        await page.waitForSelector(useVerificationCodeSelector, { timeout: waitForSelectorTimeout });
+        await page.click(useVerificationCodeSelector);
+      }
+    } catch (error) {
+      console.debug("MFA type is most likely OTP based, skipping the MFA type switching");
+    }
+
     if (otp) {
       console.debug("One-time password was specified, attempting to use it");
       console.debug("Waiting for the one-time password input field to appear and typing in the otp:", otp);
       const otpInputSelector = 'input[name="otc"]';
-      await page.waitForSelector(otpInputSelector, { timeout: 1000 });
+      await page.waitForSelector(otpInputSelector, { timeout: waitForSelectorTimeout });
       await page.type(otpInputSelector, otp, { delay: 10 });
       console.debug("Waiting for the Verify button to appear and clicking on it");
       const verifyButtonSelector = 'input[value="Verify"]';
-      await page.waitForSelector(verifyButtonSelector, { timeout: 1000 });
+      await page.waitForSelector(verifyButtonSelector, { timeout: waitForSelectorTimeout });
       await page.click(verifyButtonSelector);
     }
     console.groupEnd();
